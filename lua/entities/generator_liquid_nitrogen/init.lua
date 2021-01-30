@@ -6,7 +6,7 @@ include('shared.lua')
 
 local Energy_Increment = 450
 local Nitrogen_Increment = 60
-local Liquid_Nitrogen_Increment = 45
+local Liquid_Nitrogen_Increment = 60
 
 function ENT:Initialize()
     self.BaseClass.Initialize(self)
@@ -175,6 +175,9 @@ function ENT:Proc_Water()
         end
         self:ConsumeResource("energy", einc)
         self:ConsumeResource("nitrogen", winc)
+        if SBHE_addHeat != nil then
+            SBHE_addHeat(self,winc*100)
+        end
         self:SupplyResource("liquid nitrogen", math.ceil((Liquid_Nitrogen_Increment + (self.overdrive * Liquid_Nitrogen_Increment)) * self:GetMultiplier()) * self.Multiplier)
         if not (WireAddon == nil) then Wire_TriggerOutput(self, "LiquidNitrogenProduction", math.ceil((Liquid_Nitrogen_Increment + (self.overdrive * Liquid_Nitrogen_Increment)) * self:GetMultiplier()) * self.Multiplier) end
     else

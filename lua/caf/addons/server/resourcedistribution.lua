@@ -252,8 +252,6 @@ local function sendNetworkData(ply, netid, rddata)
                 net.WriteString(l)
                 WriteLong(w.maxvalue)
                 WriteLong(w.value)
-                WriteLong(w.localmaxvalue)
-                WriteLong(w.localvalue)
 			end
 		end
 		
@@ -341,7 +339,7 @@ local function RequestResourceData(ply, com, args)
 			data = {}
 			data.resources = {}
 			for k, v in pairs(tmpdata.resources) do
-				data.resources[k] = {value = RD.GetNetResourceAmount(tonumber(args[2]), k), maxvalue = RD.GetNetNetworkCapacity(tonumber(args[2]), k), localvalue = RD.GetNetResourceAmount(tonumber(args[2]), k, false), localmaxvalue = RD.GetNetNetworkCapacity(tonumber(args[2]), k, false)}
+				data.resources[k] = {value = RD.GetNetResourceAmount(tonumber(args[2]), k), maxvalue = RD.GetNetNetworkCapacity(tonumber(args[2]), k)}
 			end
 			data.cons = {}
 			for k, v in pairs(tmpdata.cons) do
@@ -703,6 +701,7 @@ function RD.ConsumeResource(ent, resource, amount)
 			consumed = RD.ConsumeNetResource(index.network, resource, amount)
 		end
 	end
+	if resource == "energy" then SBHE_addHeat(ent,consumed) end
 	return consumed;
 end
 
@@ -1219,14 +1218,13 @@ function RD.getConnectedNets(netid)
 end
 
 
-function RD.GetNetResourceAmount(netid, resource, sumconnectednets)
+function RD.GetNetResourceAmount(netid, resource)
 	if not nettable[netid] then return 0, "Not a valid network" end
 	if not resource then return 0, "No resource given" end
 	local amount = 0
 	local index = {}
-	sumconnectednets = sumconnectednets or (sumconnectednets == nil)
 	index.network = netid
-	if sumconnectednets and table.Count(nettable[index.network].cons) > 0 then
+	if table.Count(nettable[index.network].cons) > 0 then
 		for k, v in pairs(RD.getConnectedNets(index.network)) do
 			if nettable[v] and nettable[v].resources and nettable[v].resources[resource]  then
 				amount = amount + nettable[v].resources[resource].value
@@ -1240,11 +1238,10 @@ function RD.GetNetResourceAmount(netid, resource, sumconnectednets)
 	return amount
 end
 
-function RD.GetResourceAmount(ent, resource, sumconnectednets)
+function RD.GetResourceAmount(ent, resource)
 	if not IsValid( ent ) then return 0, "Not a valid entity" end
 	if not resource then return 0, "No resource given" end
 	local amount = 0
-	sumconnectednets = sumconnectednets or (sumconnectednets == nil)
 	if ent_table[ent:EntIndex( )] then
 		local index = ent_table[ent:EntIndex( )];
 		if index.network == 0 then
@@ -1252,7 +1249,7 @@ function RD.GetResourceAmount(ent, resource, sumconnectednets)
 				amount = index.resources[resource].value
 			end
 		else
-			amount = RD.GetNetResourceAmount(index.network, resource, sumconnectednets)
+			amount = RD.GetNetResourceAmount(index.network, resource)
 		end
 	end
 	return amount
@@ -1271,14 +1268,13 @@ function RD.GetUnitCapacity(ent, resource)
 	return amount
 end
 
-function RD.GetNetNetworkCapacity(netid, resource, sumconnectednets)
+function RD.GetNetNetworkCapacity(netid, resource)
 	if not nettable[netid] then return 0, "Not a valid Network" end
 	if not resource then return 0, "No resource given" end
 	local amount = 0
 	local index = {}
-	sumconnectednets = sumconnectednets or (sumconnectednets == nil)
 	index.network = netid
-	if sumconnectednets and table.Count(nettable[index.network].cons) > 0 then
+	if table.Count(nettable[index.network].cons) > 0 then
 		for k, v in pairs(RD.getConnectedNets(index.network)) do
 			if nettable[v] and nettable[v].resources and nettable[v].resources[resource]  then
 				amount = amount + nettable[v].resources[resource].maxvalue
@@ -1292,11 +1288,10 @@ function RD.GetNetNetworkCapacity(netid, resource, sumconnectednets)
 	return amount
 end
 
-function RD.GetNetworkCapacity(ent, resource, sumconnectednets)
+function RD.GetNetworkCapacity(ent, resource)
 	if not IsValid( ent ) then return 0, "Not a valid entity" end
 	if not resource then return 0, "No resource given" end
 	local amount = 0
-	sumconnectednets = sumconnectednets or (sumconnectednets == nil)
 	if ent_table[ent:EntIndex( )] then
 		local index = ent_table[ent:EntIndex( )];
 		if index.network == 0 then
@@ -1304,7 +1299,7 @@ function RD.GetNetworkCapacity(ent, resource, sumconnectednets)
 				amount = index.resources[resource].maxvalue
 			end
 		else
-			amount = RD.GetNetNetworkCapacity(index.network, resource, sumconnectednets)
+			amount = RD.GetNetNetworkCapacity(index.network, resource)
 		end
 	end
 	return amount
@@ -1386,7 +1381,7 @@ end
 --	beamColor - the beam color (default: Color(255, 255, 255, 255)
 function RD.Beam_settings( ent, beamMaterial, beamSize, beamColor )
 	--get beam color
-	local beamR, beamG, beamB, beamA = beamColor.r or 255, beamColor.g or 255, beamColor.b or 255, beamColor.a or 255
+	local beamR, beamG, beamB, beamA = beamColor.R or 255, beamColor.G or 255, beamColor.B or 255, beamColor.A or 255
 
 	--send beam info to ent/clientside
 	ent:SetNWString( "BeamInfo", ((beamMaterial or "cable/cable2") .. ";" .. tostring(beamSize or 2) .. ";" .. tostring(beamR or 255) .. ";" .. tostring(beamG or 255) .. ";" .. tostring(beamB or 255) .. ";" .. tostring(beamA or 255)) )

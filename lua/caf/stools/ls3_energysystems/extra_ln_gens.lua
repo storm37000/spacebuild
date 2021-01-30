@@ -1,4 +1,4 @@
-DEVICEGROUP.type = "generator_liquid_nitrogen"
+DEVICEGROUP.type			= "generator_liquid_nitrogen"
 
 --[[
 	You can also use skin = number here to define a skin to make the Module spawn with
@@ -6,6 +6,7 @@ DEVICEGROUP.type = "generator_liquid_nitrogen"
 ]]
 
 DEVICEGROUP.devices = {
+--[[
 	add_one = {
 		Name		= "CE Small Liquid Nitrogen Compressor",
 		model		= "models/ce_ls3additional/compressor/compressor.mdl",
@@ -24,6 +25,12 @@ DEVICEGROUP.devices = {
 	add_4 = {
 		Name		= "CS Nitrogen Liquifier",
 		model		= "models/chipstiks_ls3_models/NitrogenLiquifier/nitrogenliquifier.mdl",
+		skin 		= 0
+	},
+	]]
+	add_2 = {
+		Name		= "CS Nitrogen Liquifier",
+		model		= "models/chipstiks_ls3_models/nitrogenliquifier/nitrogenliquifier.mdl",
 		skin 		= 0
 	},
 }

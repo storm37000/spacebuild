@@ -4,10 +4,8 @@ util.PrecacheSound("apc_engine_start")
 util.PrecacheSound("apc_engine_stop")
 include('shared.lua')
 
-local Energy_Increment = 100
-local Water_Increment = 10
-local Steam_Increment = 10
-local HeatUpTime = 5;
+local Energy_Increment = 935
+local Water_Increment = 10 -- water to steam ratio is 1:1
 
 function ENT:Initialize()
     self.BaseClass.Initialize(self)
@@ -15,7 +13,6 @@ function ENT:Initialize()
     self.overdrive = 0
     self.damaged = 0
     self.lastused = 0
-    self.time = 0
     self.Mute = 0
     self.Multiplier = 1
     if not (WireAddon == nil) then
@@ -150,68 +147,55 @@ function ENT:Destruct()
 end
 
 function ENT:OnRemove()
+	self:TurnOff()
     self.BaseClass.OnRemove(self)
-    self:StopSound("apc_engine_start")
 end
 
 function ENT:Proc_Water()
-    local energy = self:GetResourceAmount("energy")
-    local water = self:GetResourceAmount("water")
-    local einc = Energy_Increment + (self.overdrive * Energy_Increment)
-    einc = (math.ceil(einc * self:GetMultiplier())) * self.Multiplier
-    if not (WireAddon == nil) then Wire_TriggerOutput(self, "EnergyUsage", einc) end
-    local winc = Water_Increment + (self.overdrive * Water_Increment)
-    if not (WireAddon == nil) then Wire_TriggerOutput(self, "WaterUsage", winc) end
-    winc = (math.ceil(winc * self:GetMultiplier())) * self.Multiplier
-    if self.time > HeatUpTime - (self.overdrive * 2) then
-        if (energy >= einc and water >= winc) then
-            if CAF and CAF.GetAddon("Life Support") then
-                if (self.overdrive == 1) then
-                    CAF.GetAddon("Life Support").DamageLS(self, math.random(2, 3))
-                end
-            else
-                self:SetHealth(self:Health() - math.Random(2, 3))
-                if self:Health() <= 0 then
-                    self:Remove()
-                end
-            end
-            self:ConsumeResource("energy", einc)
-            self:ConsumeResource("water", winc)
-            local left = self:SupplyResource("steam", math.ceil((Steam_Increment + (self.overdrive * Steam_Increment)) * self:GetMultiplier() * self.Multiplier))
-            if not (WireAddon == nil) then Wire_TriggerOutput(self, "SteamProduction", math.ceil((Steam_Increment + (self.overdrive * Steam_Increment)) * self:GetMultiplier() * self.Multiplier)) end
-            if left > 0 then
-                local h = left * 2
-                local o2 = math.Round(left / 2)
-                if self.environment then
-                    self.environment:Convert(-1, 3, h)
-                    self.environment:Convert(-1, 0, o2)
-                end
-            end
-        else
-            self:TurnOff()
-        end
+	if self.temperature == nil then self.temperature = 280 end
+    if self.temperature >= 374 then
+		local winc = math.ceil(90 * (self.temperature/374))
+		local wleft = self:ConsumeResource("water", winc)
+		local sinc = math.ceil(wleft)
+		local left = self:SupplyResource("steam", sinc )
+		if not (WireAddon == nil) then Wire_TriggerOutput(self, "SteamProduction", sinc - left) end
+		if not (WireAddon == nil) then Wire_TriggerOutput(self, "WaterUsage", wleft - left) end
+		self.temperature = self.temperature - (75 * ((sinc - left)/sinc))
+		self:SupplyResource("water",left)
     else
-        if (self.overdrive == 1) then
-            if CAF and CAF.GetAddon("Life Support") then
-                CAF.GetAddon("Life Support").DamageLS(self, math.random(2, 3))
-            else
-                self.health = self.health - math.Random(2, 3)
-                if self.health <= 0 then
-                    self:Remove()
-                end
-            end
-        end
-        self.time = self.time + 1
-        self:ConsumeResource("energy", einc)
-        self:ConsumeResource("water", winc)
-    end
+		if not (WireAddon == nil) then Wire_TriggerOutput(self, "WaterUsage", 0) end
+		if not (WireAddon == nil) then Wire_TriggerOutput(self, "SteamProduction", 0) end
+	end
+	if (self.Active == 1) then
+		local energy = self:GetResourceAmount("energy")
+		local einc = Energy_Increment + (self.overdrive * Energy_Increment)
+		einc = (math.ceil(einc * self:GetMultiplier())) * self.Multiplier
+		if (energy >= einc) then
+			if not (WireAddon == nil) then Wire_TriggerOutput(self, "EnergyUsage", einc) end		
+			self.temperature = self.temperature + math.ceil(75 * (1 + self.overdrive))
+			self:ConsumeResource("energy", einc)
+		else
+			if not (WireAddon == nil) then Wire_TriggerOutput(self, "EnergyUsage", 0) end
+			self:TurnOff()
+		end
+	else
+		if not (WireAddon == nil) then Wire_TriggerOutput(self, "EnergyUsage", 0) end
+	end
+	if CAF and CAF.GetAddon("Life Support") then
+		if (self.overdrive == 1) then
+			CAF.GetAddon("Life Support").DamageLS(self, math.random(2, 3))
+		end
+	else
+		self:SetHealth(self:Health() - math.Random(2, 3))
+		if self:Health() <= 0 then
+			self:Remove()
+		end
+	end
 end
 
 function ENT:Think()
     self.BaseClass.Think(self)
-    if (self.Active == 1) then
-        self:Proc_Water()
-    end
+	self:Proc_Water()
     self:NextThink(CurTime() + 1)
     return true
 end

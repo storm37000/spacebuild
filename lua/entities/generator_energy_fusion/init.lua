@@ -15,7 +15,6 @@ include('shared.lua')
 -- Was 2200, increased
 local Energy_Increment = 5000
 local Coolant_Increment = 45 --WATER NOW -- 15 nitrogen produced per 150 energy, so 45 is about 450 energy , 2000 - 450 = 1550 energy left - the requirements to generate the N
-local HW_Increment = 1
 
 function ENT:Initialize()
     self.BaseClass.Initialize(self)
@@ -35,7 +34,10 @@ function ENT:Initialize()
 end
 
 function ENT:TurnOn()
-    if (self.Active == 0) then
+    if (self.Active == 0 and self:GetResourceAmount("energy") >= Energy_Increment*10 ) then
+		self:ConsumeResource("energy", Energy_Increment*10 )
+		--local startupFuel = self:ConsumeResource("hydrogen", Energy_Increment )
+		--self:SupplyResource("plasma", startupFuel )
         self.Active = 1
         self:EmitSound("k_lab.ambient_powergenerators")
         self:EmitSound("ambient/machines/thumper_startup1.wav")
@@ -49,6 +51,8 @@ function ENT:TurnOff()
         self.Active = 0
         self:StopSound("k_lab.ambient_powergenerators")
         self:StopSound("coast.siren_citizen")
+		--local consumedPlasma = self:ConsumeResource("plasma", self:GetResourceAmount("plasma"))
+		--self:SupplyResource("hydrogen", consumedPlasma)
         if WireLib then
             WireLib.TriggerOutput(self, "On", 0)
             WireLib.TriggerOutput(self, "Output", 0)
@@ -193,111 +197,133 @@ function ENT:OnRemove()
     self.BaseClass.OnRemove(self)
 end
 
+function ENT:GetCoolant()
+	local waterc = self:GetResourceAmount("water")
+	local LNc = self:GetResourceAmount("liquid nitrogen")
+	if LNc > math.ceil(Coolant_Increment * self:GetMultiplier()) then
+		return LNc
+	elseif waterc > math.ceil(Coolant_Increment * self:GetMultiplier()) then
+		return waterc
+	else 
+		return LNc + waterc
+	end
+end
+
 function ENT:Extract_Energy()
-    local inc = Energy_Increment
+    local inc = math.ceil(Energy_Increment * self:GetMultiplier())
 
-    if (self.critical == 1) then
-        local ang = self:GetAngles()
-        local pos = (self:GetPos() + (ang:Up() * self:BoundingRadius()))
-        local test = math.random(1, 10)
-        local zapme
-        if CAF.GetAddon("Life Support") then
-            zapme = CAF.GetAddon("Life Support").ZapMe
-        end
-        if (test <= 2) then
-            if zapme then
-                zapme((pos + (ang:Right() * 90)), 5)
-                zapme((pos - (ang:Right() * 90)), 5)
-            end
-            self:EmitSound("ambient/levels/labs/electric_explosion3.wav")
-            inc = 0
-        elseif (test <= 4) then
-            if zapme then
-                zapme((pos + (ang:Right() * 90)), 3)
-                zapme((pos - (ang:Right() * 90)), 3)
-            end
-            self:EmitSound("ambient/levels/labs/electric_explosion4.wav")
-            inc = math.ceil(inc / 4)
-        elseif (test <= 6) then
-            if zapme then
-                zapme((pos + (ang:Right() * 90)), 2)
-                zapme((pos - (ang:Right() * 90)), 2)
-            end
-            self:EmitSound("ambient/levels/labs/electric_explosion1.wav")
-            inc = math.ceil(inc / 2)
-        end
-    end
-
-    if (self:GetResourceAmount("water") < math.ceil(Coolant_Increment * self:GetMultiplier())) then
-        if CAF.GetAddon("Life Support") then
-            CAF.GetAddon("Life Support").DamageLS(self, math.Round(15 - (15 * (self:GetResourceAmount("water") / math.ceil(Coolant_Increment * self:GetMultiplier())))))
-        end
-        local Smoke = ents.Create("env_smoketrail")
-        Smoke:SetKeyValue("opacity", 1)
-        Smoke:SetKeyValue("spawnrate", 10)
-        Smoke:SetKeyValue("lifetime", 2)
-        Smoke:SetKeyValue("startcolor", "180 180 180")
-        Smoke:SetKeyValue("endcolor", "255 255 255")
-        Smoke:SetKeyValue("minspeed", 15)
-        Smoke:SetKeyValue("maxspeed", 30)
-        Smoke:SetKeyValue("startsize", (self:BoundingRadius() / 2))
-        Smoke:SetKeyValue("endsize", self:BoundingRadius())
-        Smoke:SetKeyValue("spawnradius", 10)
-        Smoke:SetKeyValue("emittime", 300)
-        Smoke:SetKeyValue("firesprite", "sprites/firetrail.spr")
-        Smoke:SetKeyValue("smokesprite", "sprites/whitepuff.spr")
-        Smoke:SetPos(self:GetPos())
-        Smoke:SetParent(self)
-        Smoke:Spawn()
-        Smoke:Activate()
-        Smoke:Fire("kill", "", 1)
-
-        if (self.critical == 0) then
-            if self.time > 3 then
-                self:EmitSound("common/warning.wav")
-                self.time = 0
-            else
-                self.time = self.time + 1
-            end
-        else
-            if self.time > 1 then
-                self:StopSound("coast.siren_citizen")
-                self:EmitSound("coast.siren_citizen")
-                self.time = 0
-            else
-                self.time = self.time + 1
-            end
-        end
-
-        --only supply 5-25% of the normal amount
-        if (inc > 0) then inc = math.ceil(inc / math.random(12 - math.ceil(8 * (self:GetResourceAmount("water") / math.ceil(Coolant_Increment * self:GetMultiplier()))), 20)) end
-    else
-        local consumed = self:ConsumeResource("water", math.ceil(Coolant_Increment * self:GetMultiplier()))
-        self:SupplyResource("steam", math.ceil(consumed * 0.92))
-        self:SupplyResource("water", math.ceil(consumed * 0.08))
-    end
-
-    --heavy water check (water adds stability)
-    if (self:GetResourceAmount("heavy water") <= 0) then
+    --heavy water check (adds stability)
+    if (self:GetResourceAmount("heavy water") < self:GetMultiplier()) then
         if (inc > 0) then
             --instability varying the output from 20-80% of normal
-            local hwmult = math.random(20, 80) / 100
-            inc = math.ceil(inc * hwmult)
+            inc = math.ceil(inc * (math.random(20, 80) / 100))
         end
     else
         self.hwcount = self.hwcount + 1
         if (self.hwcount >= 5) then
-            self:ConsumeResource("heavy water", math.ceil(HW_Increment * self:GetMultiplier()))
+            self:ConsumeResource("heavy water", self:GetMultiplier())
             self.hwcount = 0
+        end
+    end
+
+    if self:GetResourceAmount("hydrogen") == 0 then
+        inc = 0
+        self:TurnOff()
+    end
+
+    if inc > 0 then
+        if (self:GetCoolant() < math.ceil(Coolant_Increment * self:GetMultiplier())) then
+            if CAF.GetAddon("Life Support") then
+                CAF.GetAddon("Life Support").DamageLS(self, math.ceil(15 - (15 * (self:GetCoolant() / math.ceil(Coolant_Increment * self:GetMultiplier())))))
+            end
+            local Smoke = ents.Create("env_smoketrail")
+            Smoke:SetKeyValue("opacity", 1)
+            Smoke:SetKeyValue("spawnrate", 10)
+            Smoke:SetKeyValue("lifetime", 2)
+            Smoke:SetKeyValue("startcolor", "180 180 180")
+            Smoke:SetKeyValue("endcolor", "255 255 255")
+            Smoke:SetKeyValue("minspeed", 15)
+            Smoke:SetKeyValue("maxspeed", 30)
+            Smoke:SetKeyValue("startsize", (self:BoundingRadius() / 2))
+            Smoke:SetKeyValue("endsize", self:BoundingRadius())
+            Smoke:SetKeyValue("spawnradius", 10)
+            Smoke:SetKeyValue("emittime", 300)
+            Smoke:SetKeyValue("firesprite", "sprites/firetrail.spr")
+            Smoke:SetKeyValue("smokesprite", "sprites/whitepuff.spr")
+            Smoke:SetPos(self:GetPos())
+            Smoke:SetParent(self)
+            Smoke:Spawn()
+            Smoke:Activate()
+            Smoke:Fire("kill", "", 1)
+
+            if (self.critical == 0) then
+                if self.time > 3 then
+                    self:EmitSound("common/warning.wav")
+                    self.time = 0
+                else
+                    self.time = self.time + 1
+                end
+            else
+                if self.time > 1 then
+                    self:StopSound("coast.siren_citizen")
+                    self:EmitSound("coast.siren_citizen")
+                    self.time = 0
+                else
+                    self.time = self.time + 1
+                end
+            end
+
+            --only supply 5-25% of the normal amount
+            if (inc > 0) then inc = math.ceil(inc / math.random(12 - math.ceil(8 * (self:GetCoolant() / math.ceil(Coolant_Increment * self:GetMultiplier()))), 20)) end
+        else
+            local consumedLN = self:ConsumeResource("liquid nitrogen", math.ceil(Coolant_Increment * self:GetMultiplier()))
+            self:SupplyResource("nitrogen", math.ceil(consumedLN))
+            if consumedLN < math.ceil(Coolant_Increment * self:GetMultiplier()) then
+                local consumed = self:ConsumeResource("water", math.ceil(Coolant_Increment * self:GetMultiplier()))
+                self:SupplyResource("steam", math.ceil(consumed))
+            end
+        end
+
+        if (self.critical == 1) then
+            local ang = self:GetAngles()
+            local pos = (self:GetPos() + (ang:Up() * self:BoundingRadius()))
+            local test = math.random(1, 10)
+            local zapme
+            if CAF.GetAddon("Life Support") then
+                zapme = CAF.GetAddon("Life Support").ZapMe
+            end
+            if (test <= 2) then
+                if zapme then
+                    zapme((pos + (ang:Right() * 90)), 5)
+                    zapme((pos - (ang:Right() * 90)), 5)
+                end
+                self:EmitSound("ambient/levels/labs/electric_explosion3.wav")
+                inc = 0
+            elseif (test <= 4) then
+                if zapme then
+                    zapme((pos + (ang:Right() * 90)), 3)
+                    zapme((pos - (ang:Right() * 90)), 3)
+                end
+                self:EmitSound("ambient/levels/labs/electric_explosion4.wav")
+                inc = math.ceil(inc / 4)
+            elseif (test <= 6) then
+                if zapme then
+                    zapme((pos + (ang:Right() * 90)), 2)
+                    zapme((pos - (ang:Right() * 90)), 2)
+                end
+                self:EmitSound("ambient/levels/labs/electric_explosion1.wav")
+                inc = math.ceil(inc / 2)
+            end
         end
     end
 
     --the money shot!
     if (inc > 0) then
-        inc = math.ceil(inc * self:GetMultiplier())
-        self:SupplyResource("energy", inc)
+        local hydro = self:ConsumeResource("hydrogen", inc/100)
+        self:SupplyResource("helium", hydro)
+        local ener = self:SupplyResource("energy", hydro*100)
     end
-    if WireLib then WireLib.TriggerOutput(self, "Output", inc) end
+    if WireLib then WireLib.TriggerOutput(self, "Output", ener) end
 
     --[[   	     Base: 2000
 
@@ -314,7 +340,7 @@ function ENT:Extract_Energy()
             wo/Heavy W: 2.5-275 ]] --
 end
 
-function ENT:Leak() --leak cause this is like with storage, make be it could leak radation?
+function ENT:Leak() --leak cause this is like with storage, maybe it could leak radation?
     if (self:GetResourceAmount("energy") >= 100000) then
         if (self.critical == 0)
         then self.critical = 1
@@ -324,10 +350,6 @@ function ENT:Leak() --leak cause this is like with storage, make be it could lea
             self:StopSound("coast.siren_citizen")
             self.critical = 0
         end
-    end
-    --chance to leak additional heavy water
-    if (math.random(1, 10) <= 2) then
-        self:ConsumeResource("heavy water", HW_Increment)
     end
 end
 

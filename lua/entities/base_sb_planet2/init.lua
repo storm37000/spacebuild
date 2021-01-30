@@ -7,7 +7,7 @@ function ENT:Initialize()
     self:PhysicsInit(SOLID_NONE)
     self:SetMoveType(MOVETYPE_NONE)
     self:SetSolid(SOLID_NONE)
-    self.sbenvironment.temperature2 = 0
+    self.sbenvironment.temperature2 = nil
     self.sbenvironment.sunburn = false
     self.sbenvironment.unstable = false
     self:SetNotSolid(true)
@@ -55,69 +55,65 @@ function ENT:SetFlags(flags)
 end
 
 function ENT:GetTemperature(ent)
-    if not ent then return end
-    local entpos = ent:GetPos()
-    local trace = {}
-    local lit = false
-    local SunAngle2 = SunAngle
-    local SunAngle
-    if table.Count(TrueSun) > 0 then
-        for k, v in pairs(TrueSun) do
-            SunAngle = (entpos - v)
-            SunAngle:Normalize()
-            local startpos = (entpos - (SunAngle * 4096))
-            trace.start = startpos
-            trace.endpos = entpos --+ Vector(0,0,30)
-            local tr = util.TraceLine(trace)
-            if (tr.Hit) then
-                if (tr == ent) then
-                    if (ent:IsPlayer()) then
-                        if self.sbenvironment.sunburn then
-                            if (ent:Health() > 0) then
-                                ent:TakeDamage(5, 0)
-                                ent:EmitSound("HL2Player.BurnPain")
-                            end
-                        end
-                    end
-                    lit = true
-                else
-                    --lit = false
-                end
-            else
-                lit = true
-            end
-        end
+	local lit = false
+    if self.sbenvironment.temperature2 or self.sbenvironment.sunburn then
+		local entpos = ent:GetPos()
+		local trace = {}
+		local SunAngle2 = SunAngle
+		local SunAngle
+		if table.Count(TrueSun) > 0 then
+			for k, v in pairs(TrueSun) do
+				SunAngle = (entpos - v)
+				SunAngle:Normalize()
+				local startpos = (entpos - (SunAngle * 4096))
+				trace.start = startpos
+				trace.endpos = entpos --+ Vector(0,0,30)
+				local tr = util.TraceLine(trace)
+				if (tr.Hit) then
+					if (tr.Entity == ent) then
+						if (ent:IsPlayer()) then
+							if self.sbenvironment.sunburn then
+								if (ent:Health() > 0) then
+									ent:TakeDamage(5, 0)
+									ent:EmitSound("HL2Player.BurnPain")
+								end
+							end
+						end
+						lit = true
+					end
+				else
+					lit = true
+				end
+			end
+		else
+			local startpos = (entpos - (SunAngle2 * 4096))
+			trace.start = startpos
+			trace.endpos = entpos --+ Vector(0,0,30)
+			local tr = util.TraceLine(trace)
+			if (tr.Hit) then
+				if (tr.Entity == ent) then
+					if (ent:IsPlayer()) then
+						if self.sbenvironment.sunburn then
+							if (ent:Health() > 0) then
+								ent:TakeDamage(5, 0)
+								ent:EmitSound("HL2Player.BurnPain")
+							end
+						end
+					end
+					lit = true
+				end
+			else
+				lit = true
+			end
+		end
     end
-    local startpos = (entpos - (SunAngle2 * 4096))
-    trace.start = startpos
-    trace.endpos = entpos --+ Vector(0,0,30)
-    local tr = util.TraceLine(trace)
-    if (tr.Hit) then
-        if (tr == ent) then
-            if (ent:IsPlayer()) then
-                if self.sbenvironment.sunburn then
-                    if (ent:Health() > 0) then
-                        ent:TakeDamage(5, 0)
-                        ent:EmitSound("HL2Player.BurnPain")
-                    end
-                end
-            end
-            lit = true
-        else
-            --lit = false
-        end
-    else
-        lit = true
-    end
-    if lit then
-        if self.sbenvironment.temperature2 then
-            return self.sbenvironment.temperature2 + ((self.sbenvironment.temperature2 * ((self:GetCO2Percentage() - self.sbenvironment.air.co2per) / 100)) / 2)
-        end
-    end
-    if not self.sbenvironment.temperature then
-        return 0
-    end
-    return self.sbenvironment.temperature + ((self.sbenvironment.temperature * ((self:GetCO2Percentage() - self.sbenvironment.air.co2per) / 100)) / 2)
+	local temp = nil
+	if lit and self.sbenvironment.temperature2 then
+		temp = self.sbenvironment.temperature2 + ((self.sbenvironment.temperature2 * ((self:GetCO2Percentage() - self.sbenvironment.air.co2per) / 100)) / 2)
+	elseif self.sbenvironment.temperature then
+		temp = self.sbenvironment.temperature + ((self.sbenvironment.temperature * ((self:GetCO2Percentage() - self.sbenvironment.air.co2per) / 100)) / 2)
+	end
+	return temp
 end
 
 function ENT:Unstable()

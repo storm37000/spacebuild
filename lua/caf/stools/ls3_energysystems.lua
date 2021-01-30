@@ -182,7 +182,11 @@ local function energy_generator_func(ent, type, sub_type, devinfo, Extra_Data, e
         base_health = 1000
         ent:AddResource("energy", math.ceil(volume_mul * 5000));
         ent:AddResource("steam", math.ceil(volume_mul * 0.92 * 45))
-        ent:AddResource("water", math.ceil(volume_mul * 0.08 * 45));
+		ent:AddResource("nitrogen", math.ceil(volume_mul * 0.92 * 45))
+        ent:AddResource("water", 0);
+		ent:AddResource("liquid nitrogen", 0)
+        ent:AddResource("hydrogen", 0)
+        ent:AddResource("helium", 0)
     elseif type == "generator_energy_hydro" then
         base_volume = 69897
         if volume ~= -1 then
@@ -245,8 +249,8 @@ TOOL.Devices = {
          func	= liquid_generator_func,
          devices = {
              default_nitrogen_rec = {
-                 Name	= "CS Liquid Nitrogen Generator (Default)",
-                 model	= "models/chipstiks_ls3_models/OxygenCompressor/oxygencompressor.mdl",
+                 Name	= "CE Liquid Nitrogen Generator",
+                 model = "models/ce_ls3additional/water_heater/water_heater.mdl",
                  skin	= 0,
                  legacy	= false, --these two vars must be defined per ent as the old tanks (defined in external file) require different values
              },

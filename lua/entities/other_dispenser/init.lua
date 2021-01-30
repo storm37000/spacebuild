@@ -10,7 +10,7 @@ function ENT:Initialize()
 	self:AddResource("oxygen", 0)
 	self:AddResource("energy", 0)
 	self:AddResource("water", 0)
-	self:AddResource("nitrogen", 0)
+	self:AddResource("liquid nitrogen", 0)
 	if not (WireAddon == nil) then
 		self.WireDebugName = self.PrintName
 	end
@@ -44,7 +44,7 @@ function ENT:SetActive( value, caller )
 	self.air = self:GetResourceAmount("oxygen")
 	self.energy = self:GetResourceAmount("energy")
 	self.coolant = self:GetResourceAmount("water")
-	self.coolant2 = self:GetResourceAmount("nitrogen")
+	self.coolant2 = self:GetResourceAmount("liquid nitrogen")
 	
 	local air_needed = math.ceil((MaxAmount - caller.suit.air) * Divider)
 	if ( air_needed < self.air ) then
@@ -66,11 +66,11 @@ function ENT:SetActive( value, caller )
 	
 	local nitrogen_needed = math.ceil(((MaxAmount - caller.suit.coolant) * Divider)/2)
 	if ( nitrogen_needed < self.coolant2 ) then
-		self:ConsumeResource("nitrogen", nitrogen_needed)
+		self:ConsumeResource("liquid nitrogen", nitrogen_needed)
 		caller.suit.coolant = MaxAmount
 	elseif (self.coolant2 > 0) then
 		caller.suit.coolant = caller.suit.coolant + math.floor(self.coolant2 * 2 * Multiplier)
-		self:ConsumeResource("nitrogen", self.coolant2)
+		self:ConsumeResource("liquid nitrogen", self.coolant2)
 	end
 	
 	local coolant_needed = math.ceil((MaxAmount - caller.suit.coolant) * Divider)

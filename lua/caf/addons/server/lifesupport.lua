@@ -104,11 +104,9 @@ function LS.__Construct()
 	local SB = CAF.GetAddon("Spacebuild")
 	if SB then
 		--Msg("Adding Player override to SB\n")
-		SB.AddPlayerOverride()
+		SB.AddOverride_EntityHeatDestroy()
 		SB.AddOverride_PlayerHeatDestroy()
 	end
-	--SB_PlayerOverride = true
-	--SB_Override_PlayerHeatDestroy = true
 	hook.Add( "PlayerSpawnedVehicle", "LS_vehicle_spawn", LS_Reg_Veh )
 	if (SunAngle == nil) then SunAngle = Vector(0,0,-1) end
 	for k, ply in pairs(player.GetAll( )) do
@@ -290,7 +288,7 @@ end
 function LS.LS_Immolate(ent)
 	if not ent then return end
 	ent:EmitSound( "NPC_Stalker.BurnFlesh" )
-	ent:SetModel("models/player/charple.mdl")
+	ent:SetModel("models/player/charple01.mdl")
 	timer.Simple(3, function() LS.Burn_Quiet(ent) end)
 end
 
@@ -354,7 +352,7 @@ end
 
 function LS.RemoveEnt( ent )
 	constraint.RemoveAll( ent )
-	timer.Simple( 1, function() if IsValid(ent) then SafeRemoveEntity(ent) end end)
+	timer.Simple( 1, RemoveEntity, ent )
 	ent:SetNotSolid( true )
 	ent:SetMoveType( MOVETYPE_NONE )
 	ent:SetNoDraw( true )
@@ -401,62 +399,7 @@ function Ply:LsCheck()
 		local RD = CAF.GetAddon("Resource Distribution")
 		local SB = CAF.GetAddon("Spacebuild")
 		if SB and SB.GetStatus() then
-			local space = SB.GetSpace()
-			local environment = space --restore to default before doing the Environment checks
-			local oldenvironment = self.environment
-        for k, v in pairs(SB.GetPlanets()) do
-                if v and v:IsValid() then
-					--Msg("Checking planet\n")
-					environment = v:OnEnvironment(self, environment, space) or environment
-				end
-			end
-			if environment == space then
-				for k, v in pairs(SB.GetStars()) do
-					if v and v:IsValid() then
-						environment = v:OnEnvironment(self, environment, space) or environment
-					end
-				end
-			end
-			for k, v in pairs(SB.GetEnvironments()) do
-				if v and v:IsValid() then
-					environment = v:OnEnvironment(self, environment, space) or environment
-				end
-			end
-			if oldenvironment ~= environment then
-				self.environment = environment
-				SB.OnEnvironmentChanged(self)
-			elseif oldenvironment ~= self.environment then
-				self.environment = oldenvironment
-			end
-			self.environment:UpdateGravity(self)
-			
-			if self.environment:GetPressure() > 1.5 and not pod:IsValid() then
-				local pressure = self.environment:GetPressure() - 1.5
-				for k, v in pairs(LS.GetAirRegulators()) do
-					if v and IsValid(v) and v:IsActive() and self:GetPos():Distance(v:GetPos()) < v:GetRange() then
-						pressure = v:UsePersonPressure(pressure)
-					end
-				end
-				if pressure > 0 then
-					if self.suit.air <= 0 then
-						self:TakeDamage( (pressure) * 50 , 0 )
-						LS.LS_Crush( self )
-						if self:Health() <= 0 then
-							self:LsResetSuit()
-							return
-						end
-					elseif self.suit.air < math.ceil(pressure/5) then
-						self:TakeDamage(math.Round((self.suit.air/(pressure/5))* ((pressure +1) * 50)) , 0 )
-						self.suit.air = 0
-						if self:Health() <= 0 then
-							self:LsResetSuit()
-							return
-						end
-					else
-						self.suit.air = math.Round(self.suit.air - (pressure/5))
-					end
-				end
-			end
+			if self.environment == nil then print("uh, oh, this shouldnt happen") return end
 			self.caf.custom.ls.temperature = self.environment:GetTemperature(self)
 			if self.caf.custom.ls.temperature < 283 or self.caf.custom.ls.temperature > 308 then
 				if pod and pod:IsValid() then

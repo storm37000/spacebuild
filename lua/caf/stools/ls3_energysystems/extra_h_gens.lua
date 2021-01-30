@@ -6,11 +6,11 @@ DEVICEGROUP.type = "generator_gas_h"
 ]]
 
 DEVICEGROUP.devices = {
-    --[[add_one = {
+    add_one = {
          Name		= "CE Small Hydrogen Compressor",
          model		= "models/ce_ls3additional/compressor/compressor.mdl",
          skin 		= 2
-     },]]
+     },
     add_2 = {
         Name = "CE Large Hydrogen Compressor",
         model = "models/ce_ls3additional/compressor/compressor_large.mdl",

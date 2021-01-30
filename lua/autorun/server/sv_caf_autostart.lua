@@ -121,17 +121,19 @@ local function LoadAddonStatus( addon, defaultstatus )
 end
 
 local function OnEntitySpawn(ent , enttype , ply)
-	if ent == NULL then
-		return
-	end	
-	ent.caf = ent.caf or {}
-	ent.caf.custom = ent.caf.custom or {}
-	if ent.caf.custom.canreceivedamage == nil then
-		ent.caf.custom.canreceivedamage = true
+	if ent == NULL then return end
+	if ent == nil then return end
+	if not IsValid(ent) then return end
+	if ent:GetClass() != "prop_physics" then
+		ent.caf = ent.caf or {}
+		ent.caf.custom = ent.caf.custom or {}
 	end
-	if ent.caf.custom.canreceiveheatdamage == nil then
-		ent.caf.custom.canreceiveheatdamage = true
-	end
+--	if ent.caf.custom.canreceivedamage == nil then
+--		ent.caf.custom.canreceivedamage = true
+--	end
+--	if ent.caf.custom.canreceiveheatdamage == nil then
+--		ent.caf.custom.canreceiveheatdamage = true
+--	end
 	for k , v in pairs(hooks["OnEntitySpawn"]) do
 		local ok, err = pcall(v, ent , enttype , ply)
 		if not (ok) then
@@ -313,6 +315,7 @@ function CAF2.Start()
 	end
 	CAF2.StartingUp = false
 	net.Start("CAF_Start_false")
+	net.Broadcast()
 end
 hook.Add( "InitPostEntity", "CAF_Start", CAF2.Start)
 
@@ -390,19 +393,10 @@ local function AddonDestruct(ply, com, args)
 end
 concommand.Add( "CAF_Addon_Destruct", AddonDestruct ) 
 
-local kickgarry = false;
 --[[
 	This function will update the Client with all active addons
 ]]
 function CAF2.PlayerSpawn(ply)
-	if kickgarry then
-		pcall(function()
-			if ply:SteamID() == "STEAM_0:1:7099" then
-				ply:Kick("We don't want you here!");
-			end
-		end);
-	end
-	
 	ply:ChatPrint("This server is using the Custom Addon Framework\n")
 	ply:ChatPrint("Report any bugs during the beta at https://github.com/spacebuild/spacebuild/issues\n")
 	

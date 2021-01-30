@@ -8,8 +8,8 @@ require("ArrayList")
 require("HashMap")
 require("caf_util")
 require("Json")
-require("CustomAttack")
-require("CustomArmor")
+--require("CustomAttack")
+--require("CustomArmor")
 require("cache")
 
 

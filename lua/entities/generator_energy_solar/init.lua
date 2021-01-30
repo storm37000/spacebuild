@@ -56,12 +56,11 @@ function ENT:Extract_Energy(mul)
     end
     local inc = 0
     local SB = CAF.GetAddon("Spacebuild")
-    if SB and SB.GetStatus() then
-        if not self.environment then return end
-        inc = math.ceil(Energy_Increment / ((self.environment:GetAtmosphere()) + 1))
-    else
-        inc = math.ceil(Energy_Increment / 2)
-    end
+	local env = 0
+	if self.environment ~= nil then
+		env = self.environment:GetAtmosphere()
+	end
+	inc = math.ceil(Energy_Increment / (env + 1))
     if (self.damaged == 1) then inc = math.ceil(inc / 2) end
     if (inc > 0) then
         inc = math.ceil(inc * self:GetMultiplier() * mul)
@@ -82,10 +81,7 @@ function ENT:GenEnergy()
         self:TurnOff()
     else
         local entpos = self:GetPos()
-        local trace = {}
-        local lit = false
-        local SunAngle2 = SunAngle or Vector(0, 0, 1)
-        local SunAngle
+        --local SunAngle
         if TrueSun and table.Count(TrueSun) > 0 then
             local output = 0
             for k, SUN_POS in pairs(TrueSun) do
@@ -106,7 +102,7 @@ function ENT:GenEnergy()
                         self:Extract_Energy()
                         return
                     end]]
-                trace = util.QuickTrace(SUN_POS, entpos - SUN_POS, nil)
+                local trace = util.QuickTrace(SUN_POS, entpos - SUN_POS, nil)
                 if trace.Hit then
                     if trace.Entity == self then
                         local v = self:GetUp() + trace.HitNormal
@@ -115,10 +111,6 @@ function ENT:GenEnergy()
                             output = output + n
                             --solar panel produces energy
                         end
-                    else
-                        local n = math.Clamp(1 - SUN_POS:Distance(trace.HitPos) / SUN_POS:Distance(entpos), 0, 1)
-                        output = output + n
-                        --solar panel is being blocked
                     end
                 end
                 if output >= 1 then
@@ -133,43 +125,37 @@ function ENT:GenEnergy()
                 self:Extract_Energy(output)
                 return
             end
-        end
-        local SUN_POS = (entpos - (SunAngle2 * 4096))
-        --[[trace.start = startpos
-          trace.endpos = entpos --+ Vector(0,0,30)
-          local tr = util.TraceLine( trace )
-          if (tr.Hit) then
-              if (tr.Entity == self) then
-                  self:TurnOn()
-                  self:Extract_Energy(1)
-                  return
-              end
-          else
-              self:TurnOn()
-              self:Extract_Energy()
-              return
-          end]]
-        trace = util.QuickTrace(SUN_POS, entpos - SUN_POS, nil)
-        if trace.Hit then
-            if trace.Entity == self then
-                local v = self:GetUp() + trace.HitNormal
-                local n = v.x * v.y * v.z
-                if n > 0 then
-                    self:TurnOn()
-                    self:Extract_Energy(n)
-                    return
-                end
-            else
-                local n = math.Clamp(1 - SUN_POS:Distance(trace.HitPos) / SUN_POS:Distance(entpos), 0, 1)
-                if n > 0 then
-                    self:TurnOn()
-                    self:Extract_Energy(n)
-                    return
-                end
-                --solar panel is being blocked
-            end
-        end
-        self:TurnOff() --No Sunbeams in sight so turn Off
+		else
+			local SunAngle2 = SunAngle or Vector(0, 0, 1)
+			local SUN_POS = (entpos - (SunAngle2 * 4096))
+			--[[trace.start = startpos
+			  trace.endpos = entpos --+ Vector(0,0,30)
+			  local tr = util.TraceLine( trace )
+			  if (tr.Hit) then
+				  if (tr.Entity == self) then
+					  self:TurnOn()
+					  self:Extract_Energy(1)
+					  return
+				  end
+			  else
+				  self:TurnOn()
+				  self:Extract_Energy()
+				  return
+			  end]]
+			local trace = util.QuickTrace(SUN_POS, entpos - SUN_POS, nil)
+			if trace.Hit then
+				if trace.Entity == self then
+					local v = self:GetUp() + trace.HitNormal
+					local n = v.x * v.y * v.z
+					if n > 0 then
+						self:TurnOn()
+						self:Extract_Energy(n)
+						return
+					end
+				end
+			end
+			self:TurnOff() --No Sunbeams in sight so turn Off
+		end
     end
 end
 

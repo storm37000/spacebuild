@@ -3,7 +3,7 @@ AddCSLuaFile("shared.lua")
 
 include('shared.lua')
 
-local Energy_Increment = 100 --40 before  --randomize for weather
+local Energy_Increment = 40
 
 function ENT:Initialize()
     self.BaseClass.Initialize(self)
@@ -25,7 +25,7 @@ function ENT:TurnOn()
         if self.sequence and self.sequence ~= -1 then
             self:SetSequence(self.sequence)
             self:ResetSequence(self.sequence)
-            self:SetPlaybackRate(1)
+            --self:SetPlaybackRate(1)
         end
     end
 end
@@ -66,18 +66,11 @@ end
 function ENT:Extract_Energy()
     local inc = 0
     if (self.damaged == 0) then --or (math.random(1, 10) < 6)
-        if self.environment then
-            local planet = self.environment:IsOnPlanet()
-            if planet and planet:GetAtmosphere() > 0.2 then
-                inc = math.random(1, (Energy_Increment * planet:GetAtmosphere()))
-            end
-        else
-            inc = 1
+        if self.environment and (self.environment:IsStar() or self.environment:IsPlanet()) then
+			inc = Energy_Increment * self.environment:GetAtmosphere()
         end
         if (inc > 0) then
-            local einc = math.floor(inc * Energy_Increment)
-            --if (inc > Energy_Increment) then inc = Energy_Increment end
-            einc = math.ceil(einc * self:GetMultiplier())
+            local einc = math.ceil(inc * self:GetMultiplier())
             self:SupplyResource("energy", einc)
             if not (WireAddon == nil) then Wire_TriggerOutput(self, "Out", einc) end
         else
@@ -105,7 +98,7 @@ function ENT:Think()
     self.BaseClass.Think(self)
     if self.sequence and self.sequence ~= -1 then
         self:ResetSequence(self.sequence)
-        self:SetPlaybackRate(1)
+        --self:SetPlaybackRate(1)
     end
     self.thinkcount = self.thinkcount + 1
     if self.thinkcount == 10 then
@@ -113,15 +106,17 @@ function ENT:Think()
         if SB and SB.GetStatus() then
             if self.environment then
                 local planet = self.environment:IsOnPlanet()
-                if (planet and planet:GetAtmosphere() > 0) then
-                    self:SetPlaybackRate(planet:GetAtmosphere())
+				local atmos = 0
+				if IsValid(planet) then atmos = planet:GetAtmosphere() end
+                if (atmos > 0) then
                     self:TurnOn()
+					if atmos > 10 then self:Destruct() end
+					self:SetPlaybackRate(atmos)
                 else
                     self:TurnOff()
                 end
             end
         else
-            self:SetPlaybackRate(1)
             self:TurnOn()
         end
         if (self.Active == 1) then
